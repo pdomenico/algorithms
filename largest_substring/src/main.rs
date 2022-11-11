@@ -1,133 +1,49 @@
-use core::cmp::max;
-use std::{collections::HashMap, hash::Hash};
+use std::collections::HashMap;
 struct Solution {}
 
 impl Solution {
-    fn find_longest(s: &mut String) -> (i32, i32, i32) {
-        let len = s.len();
-        if len == 1 {
-            return (1, 0, 0);
-        }
-
-        let mut left_half = s;
-        let mut right_half = &left_half.split_off((len / 2) + 1);
-        let left_half_length = left_half.len() as i32;
-        let right_half_length = right_half.len() as i32;
-        let (left_max_length, left_begin, left_end) = Self::find_longest(&mut left_half);
-        let (right_max_length, right_begin, right_end) = Self::find_longest(right_half);
-
-        let mut positions: HashMap<char, i32> = HashMap::new();
-        // let left_chars = left_half.chars();
-        // let right_chars = right_half.chars();
-
-        let mut starting_index_overall: i32;
-        let mut ending_index_overall: i32;
-        let mut max_length_overall: i32;
-        if left_max_length > right_max_length {
-            starting_index_overall = left_begin;
-            ending_index_overall = left_end;
-            max_length_overall = left_max_length;
-        } else {
-            starting_index_overall = right_begin;
-            ending_index_overall = right_end;
-            max_length_overall = right_max_length;
-        }
-
-        let mut split_length = 0;
-        let mut starting_index: i32;
-        // if the longest substring from the left half does not end at the end of the left half, try to find a longer subs starting from 1 char after
-        if left_end < left_half_length - 1 {
-            let mut i = (left_end + 1);
-            starting_index = i;
-            while i < (left_half_length + right_end + 1) {
-                if i < left_half_length {
-                    let character = left_half.chars().nth(i as usize).unwrap();
-                    match positions.get(&character) {
-                        Some(v) => {
-                            if split_length > max_length_overall {
-                                max_length_overall = split_length;
-                                starting_index_overall = starting_index;
-                                ending_index_overall = i - 1;
-                            }
-                            i = *v;
-                            starting_index = i;
-                            split_length = 0;
-                            positions = HashMap::new();
-                        }
-                        None => {
-                            positions.insert(character, i);
-                            split_length += 1;
-                            i += 1;
-                        }
-                    }
-                } else {
-                    let character = right_half
-                        .chars()
-                        .nth((i - left_half_length) as usize)
-                        .unwrap();
-                    match positions.get(&character) {
-                        Some(v) => {
-                            if split_length > max_length_overall {
-                                max_length_overall = split_length;
-                                starting_index_overall = starting_index;
-                                ending_index_overall = i - 1;
-                            }
-                            i = *v;
-                            split_length = 0;
-                            positions = HashMap::new();
-                        }
-                        None => {
-                            positions.insert(character, i);
-                            split_length += 1;
-                            i += 1;
-                        }
-                    }
-                }
-            }
-        } else {
-            for i in left_begin..(left_end + 1) {
-                positions.insert(left_half.chars().nth(i as usize).unwrap(), i);
-            }
-            split_length = left_max_length;
-            let mut i = left_end + 1;
-            while i < (left_half_length + right_end + 1) {
-                let character = &right_half
-                    .chars()
-                    .nth((i - left_half_length) as usize)
-                    .unwrap();
-                match positions.get(character) {
-                    Some(v) => {
-                        if split_length > max_length_overall {
-                            max_length_overall = split_length;
-                            starting_index_overall = starting_index;
-                            ending_index_overall = i - 1;
-                        }
-                        positions = HashMap::new();
-                        split_length = 0;
-                        i = *v;
-                    }
-                    None => {
-                        positions.insert(*character, i);
-                        i += 1;
-                        split_length += 1;
-                    }
-                }
-            }
-        }
-
-        return (
-            max_length_overall,
-            starting_index_overall,
-            ending_index_overall,
-        );
-    }
-
     pub fn length_of_longest_substring(s: String) -> i32 {
-        let (max_length, _, _) = Self::find_longest(&mut s);
-        return max_length;
+        let mut longest = 0;
+        let mut window_start_index: usize = 0;
+        let mut current_window_size: usize = 0;
+        let mut positions: HashMap<char, usize> = HashMap::new();
+
+        for (i, c) in s.chars().enumerate() {
+            let found: Option<usize>;
+            match positions.get(&c) {
+                Some(old_index) => found = Some(*old_index),
+                None => found = None,
+            }
+            match found {
+                Some(old_index) => {
+                    if current_window_size > longest {
+                        longest = current_window_size;
+                    }
+
+                    for j in window_start_index..=old_index {
+                        positions.remove(&s.chars().nth(j).unwrap());
+                    }
+                    positions.insert(c, i);
+                    window_start_index = old_index + 1;
+                    current_window_size = i - window_start_index + 1;
+                }
+                None => {
+                    positions.insert(c, i);
+                    current_window_size += 1;
+                }
+            }
+        }
+
+        if current_window_size > longest {
+            return current_window_size as i32;
+        } else {
+            return longest as i32;
+        }
     }
 }
 fn main() {
-    let res: usize = 5 / 2;
-    println!("{}", res);
+    println!(
+        "{}",
+        Solution::length_of_longest_substring(String::from("pwwkew"))
+    );
 }

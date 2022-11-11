@@ -1,10 +1,13 @@
-fn quicksort(v: &mut [i32], length: usize) {
+use rand::{rngs::ThreadRng, Rng};
+use std::time::{self, Instant};
+
+fn quicksort(v: &mut [i32], length: usize, rng: &mut ThreadRng) {
     if length == 0 {
         return;
     }
 
-    // choose the pivot to be the first element
-    let pivot = v[0];
+    // choose the pivot at random
+    let pivot = v[rng.gen_range(0..length)];
     let mut less_than_up_to: usize = 0;
 
     for i in 1..length {
@@ -20,20 +23,29 @@ fn quicksort(v: &mut [i32], length: usize) {
     v[less_than_up_to] = pivot;
     v[0] = tmp;
 
-    quicksort(&mut v[0..less_than_up_to], less_than_up_to);
+    quicksort(&mut v[0..less_than_up_to], less_than_up_to, rng);
     quicksort(
         &mut v[(less_than_up_to + 1)..length],
         length - (less_than_up_to + 1),
+        rng,
     );
 }
 
-fn main() {
-    let mut v = [
-        32, 324, 235, 43, 32, 4, 32, 43, 3, 423, 4, 3, 423, 4, 32, 4, 32, 6, 5, 7, 8, 8767, 78,
-    ];
+fn try_quicksort() {
+    const ARRAY_SIZE: usize = 100000;
+    let mut rng = rand::thread_rng();
+    let mut array = [0; ARRAY_SIZE];
+    for i in 0..ARRAY_SIZE {
+        array[i] = rng.gen_range(0..(99999));
+    }
+    let now = Instant::now();
+    quicksort(&mut array, ARRAY_SIZE, &mut rng);
+    let elapsed_time = now.elapsed();
+    println!("Took {}ms", elapsed_time.as_millis());
+}
 
-    quicksort(&mut v, 23);
-    for i in 0..23 {
-        println!("{}", v[i]);
+fn main() {
+    for _ in 0..10 {
+        try_quicksort();
     }
 }
