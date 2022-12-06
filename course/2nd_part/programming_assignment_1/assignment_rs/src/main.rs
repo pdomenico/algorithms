@@ -33,6 +33,7 @@ fn main() {
         });
     }
 
+
     if let Ok(lines) = read_lines("edges.txt") {
         for line in lines {
             if let Ok(line) = line {
@@ -119,3 +120,5 @@ fn second_dfs(graph: &Vec<Node>, scc: &mut SCC, visited: &mut [bool], node: usiz
     }
     scc.size += 1;
 }
+
+
