@@ -34,7 +34,7 @@ class Heap:
             return None
         return index
 
-    def heapify_up(self, from_index: int):
+    def heapify_up(self, from_index: int) -> bool:
         parent_index = self.get_parent_index(from_index)
         if parent_index == None:
             return

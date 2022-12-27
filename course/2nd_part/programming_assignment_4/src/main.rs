@@ -1,7 +1,7 @@
 use fnv::FnvHashMap;
-use std::collections::HashMap;
 use std::fs::File;
 use std::io::{prelude::*, BufReader};
+use std::thread;
 
 fn add_to_hashmap(filename: &str, hashmap: &mut FnvHashMap<i64, bool>) {
     let file = File::open(filename).unwrap();
@@ -45,5 +45,22 @@ fn main() {
         }
     }
 
-    println!("{res}");
+    let mut first_res = 0;
+    thread::spawn(|| {
+        'outer: for i in -10000..10001 {
+            println!("Checking for {i}, res={res}");
+            'inner: for x in &numbers {
+                let y: i64 = i - *x;
+                if y == *x {
+                    continue 'inner;
+                }
+
+                if let Some(_) = hashmap.get(&y) {
+                    first_res += 1;
+                    println!("Found one pair! {x}:{y}");
+                    continue 'outer;
+                }
+            }
+        }
+    });
 }
