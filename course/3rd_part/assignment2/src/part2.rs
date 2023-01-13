@@ -7,93 +7,95 @@ use std::fs::File;
 use std::{io, io::BufRead};
 type Node = [u8; 3];
 
-// THIS IS WRONG
-// pub fn main_with_union_find() {
-//     let file = File::open("input2.txt").unwrap();
-//     let mut reader = io::BufReader::new(file).lines();
-//     let nodes_n: usize = reader
-//         .next()
-//         .unwrap()
-//         .unwrap()
-//         .split_whitespace()
-//         .next()
-//         .unwrap()
-//         .parse()
-//         .unwrap();
+pub fn main_with_union_find() {
+    let file = File::open("input2.txt").unwrap();
+    let mut reader = io::BufReader::new(file).lines();
+    let nodes_n: usize = reader
+        .next()
+        .unwrap()
+        .unwrap()
+        .split_whitespace()
+        .next()
+        .unwrap()
+        .parse()
+        .unwrap();
 
-//     let mut nodes = HashMap::with_capacity(nodes_n);
-//     let mut i = 0;
+    let mut nodes = HashMap::with_capacity(nodes_n);
+    let mut i = 0;
 
-//     while let Some(Ok(line)) = reader.next() {
-//         let mut bits = line.split_whitespace();
-//         let mut node: [u8; 3] = [0; 3];
-//         for i in 0..3 {
-//             for j in 0..8 {
-//                 match bits.next() {
-//                     Some("1") => node[i] ^= 1 << (7 - j),
-//                     Some("0") => (),
-//                     _ => {
-//                         println!("{line}");
-//                         panic!("invalid input");
-//                     }
-//                 }
-//             }
-//         }
-//         nodes.insert(node, i);
-//     }
+    while let Some(Ok(line)) = reader.next() {
+        let mut bits = line.split_whitespace();
+        let mut node: [u8; 3] = [0; 3];
+        for i in 0..3 {
+            for j in 0..8 {
+                match bits.next() {
+                    Some("1") => node[i] ^= 1 << (7 - j),
+                    Some("0") => (),
+                    _ => {
+                        println!("{line}");
+                        panic!("invalid input");
+                    }
+                }
+            }
+        }
+        nodes.insert(node, i);
+        i += 1;
+    }
 
-//     let mut clusters: UnionFind<usize> = UnionFind::new(nodes_n);
-//     let mut processed_nodes = 0;
+    let mut clusters: UnionFind<usize> = UnionFind::new(nodes_n);
+    let mut processed_nodes = 0;
 
-//     let progress_bar = ProgressBar::new(nodes_n as u64);
-//     progress_bar.set_style(
-//         ProgressStyle::default_bar()
-//             .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
-//             .expect("")
-//             .progress_chars("=> "),
-//     );
+    let progress_bar = ProgressBar::new(nodes_n as u64);
+    progress_bar.set_style(
+        ProgressStyle::default_bar()
+            .template("[{elapsed_precise}] {bar:40.cyan/blue} {pos:>7}/{len:7} {msg}")
+            .expect("")
+            .progress_chars("=> "),
+    );
 
-//     for (node, _) in nodes.iter() {
-//         progress_bar.set_position(processed_nodes);
-//         // find similar nodes
-//         let mut similar_nodes = Vec::new();
+    for (node, node_idx) in nodes.iter() {
+        progress_bar.set_position(processed_nodes);
+        // find similar nodes
+        let mut similar_nodes = Vec::new();
 
-//         for i in 0..3 {
-//             for j in 0..8 {
-//                 let mut one_flipped = node.clone();
-//                 one_flipped[i] ^= 1 << (7 - j);
+        for i in 0..3 {
+            for j in 0..8 {
+                let mut one_flipped = node.clone();
+                one_flipped[i] ^= 1 << (7 - j);
 
-//                 if let Some(_) = nodes.get(&one_flipped) {
-//                     similar_nodes.push(one_flipped.clone());
-//                 }
+                if let Some(index) = nodes.get(&one_flipped) {
+                    similar_nodes.push(index);
+                }
 
-//                 for i2 in 0..3 {
-//                     for j2 in 0..8 {
-//                         if i == i2 && j == j2 {
-//                             continue;
-//                         }
+                for i2 in 0..3 {
+                    for j2 in 0..8 {
+                        if i == i2 && j == j2 {
+                            continue;
+                        }
 
-//                         let mut two_flipped = one_flipped.clone();
-//                         two_flipped[i2] ^= 1 << (7 - j2);
+                        let mut two_flipped = one_flipped.clone();
+                        two_flipped[i2] ^= 1 << (7 - j2);
 
-//                         if let Some(_) = nodes.get(&two_flipped) {
-//                             similar_nodes.push(two_flipped.clone());
-//                         }
-//                     }
-//                 }
-//             }
-//         }
-//         for similar_node in similar_nodes {
-//             match (nodes.get(node), nodes.get(&similar_node)) {
-//                 (Some(idx1), Some(idx2)) => clusters.union(*idx1 as usize, *idx2 as usize),
-//                 _ => unreachable!(),
-//             };
-//         }
-//         processed_nodes += 1;
-//     }
-//     let clusters_len = clusters.to_vec().len();
-//     println!("{}", clusters_len);
-// }
+                        if let Some(index) = nodes.get(&two_flipped) {
+                            similar_nodes.push(index);
+                        }
+                    }
+                }
+            }
+        }
+        for similar_node_idx in similar_nodes {
+            clusters.union(*node_idx as usize, *similar_node_idx as usize);
+        }
+        processed_nodes += 1;
+    }
+
+    let mut clusters_hashset = HashSet::new();
+    for (_, node_idx) in nodes.iter() {
+        // println!("node: {}", node_idx);
+        clusters_hashset.insert(clusters.find(*node_idx as usize));
+    }
+    println!("{}", clusters_hashset.len());
+}
 
 pub fn main() {
     let file = File::open("input2.txt").unwrap();
