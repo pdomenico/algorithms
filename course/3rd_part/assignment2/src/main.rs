@@ -2,5 +2,5 @@ use assignment2::part1;
 use assignment2::part2;
 
 fn main() {
-    part2::main_with_union_find();
+    part2::main();
 }

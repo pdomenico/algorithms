@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 disjoint-sets = "0.4.2"
+fxhash = "0.2.1"
 indicatif = "0.17.2"
