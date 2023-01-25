@@ -1,6 +1,6 @@
 fn main() {
     let values = vec![1, 2, 3, 4, 5, 6, 7];
-    let frequencies = vec![0.05, 0.4, 0.08, 0.04, 0.1, 0.1, 0.23];
+    let frequencies = vec![0.20, 0.05, 0.17, 0.10, 0.20, 0.03, 0.25];
     let mut sol = vec![vec![0.0; values.len()]; values.len()];
 
     for s in 0..values.len() {
