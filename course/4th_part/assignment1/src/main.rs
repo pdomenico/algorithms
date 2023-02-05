@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::BufRead;
 use std::sync::{Arc, Mutex};
 use std::thread;
+use std::time::Instant;
 
 const STACK_SIZE: usize = 1024 * 1024 * 1024;
 
@@ -52,15 +53,10 @@ fn read_input(filenames: &Vec<&str>) -> Vec<(Vec<johnson::Edge>, usize)> {
     graphs.into_iter().zip(n_vertices.into_iter()).collect()
 }
 
-fn main() {
-    let graphs_with_size = read_input(&vec!["g1.txt", "g2.txt", "g3.txt"]);
-    let (mut graphs, mut n_vertices) = (vec![], vec![]);
-    for (graph, n) in graphs_with_size {
-        graphs.push(graph);
-        n_vertices.push(n);
-    }
-
+fn with_floyd_warshall(graphs: &Vec<Vec<johnson::Edge>>, n_vertices: &Vec<usize>) {
     println!("Floyd-Warshall...");
+    let graphs = graphs.clone();
+    let n_vertices = n_vertices.clone();
     let shortest_paths_matrices = Arc::new(Mutex::new(Vec::new()));
     let shortest_paths_clone = shortest_paths_matrices.clone();
     let n_vertices_clone = n_vertices.clone();
@@ -87,13 +83,52 @@ fn main() {
                     }
                 }
             }
-            // dbg!(&shortest_paths);
 
             println!(
-                "Shortest path overall with floyd-warshall: {}\n",
+                "Shortest path overall with floyd-warshall: {}",
                 shortest_paths.iter().min().unwrap()
             );
         })
         .unwrap();
     new_thread.join().unwrap();
+}
+
+fn with_johnson(graphs: &Vec<Vec<johnson::Edge>>, n_vertices: &Vec<usize>) {
+    println!("Johnson...");
+    let mut total_paths = Vec::new();
+
+    for (i, (graph, n_vertices)) in graphs.iter().zip(n_vertices.iter()).enumerate() {
+        if let Some(paths) = johnson::johnson(graph, *n_vertices) {
+            paths.iter().for_each(|p| {
+                p.iter().for_each(|path| {
+                    if let Some(path) = path {
+                        total_paths.push(*path)
+                    }
+                })
+            })
+        } else {
+            println!("Negative cost cycle on graph {}!", i + 1);
+        }
+    }
+
+    println!(
+        "Shortest path overall with Johnson: {}",
+        total_paths.iter().min().unwrap()
+    );
+}
+
+fn main() {
+    let graphs_with_size = read_input(&vec!["g1.txt", "g2.txt", "g3.txt"]);
+    let (mut graphs, mut n_vertices) = (vec![], vec![]);
+    for (graph, n) in graphs_with_size {
+        graphs.push(graph);
+        n_vertices.push(n);
+    }
+
+    let start = Instant::now();
+    with_floyd_warshall(&graphs, &n_vertices);
+    println!("Floyd-Warshall took {:?}\n", start.elapsed());
+    let start = Instant::now();
+    with_johnson(&graphs, &n_vertices);
+    println!("Johnson took {:?}", start.elapsed());
 }

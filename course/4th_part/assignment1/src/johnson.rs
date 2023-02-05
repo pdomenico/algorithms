@@ -67,6 +67,8 @@ pub fn bellman_ford(
     }
 
     for budget in 1..=(n_vertices + 1) {
+        print!("\ri: {budget}");
+        stdout().flush().unwrap();
         for destination in 1..=n_vertices {
             let case1 = prev_paths[destination];
             let case2 = {
@@ -99,6 +101,7 @@ pub fn bellman_ford(
             new_paths = vec![None; n_vertices + 1];
         }
     }
+    println!();
 
     for destination in 1..=n_vertices {
         if new_paths[destination] != prev_paths[destination] {
@@ -112,7 +115,7 @@ pub fn bellman_ford(
 pub fn johnson(graph: &Vec<Edge>, n_vertices: usize) -> Option<Vec<Vec<Option<i32>>>> {
     // Add new edges to the graph
     let mut modified_graph = graph.clone();
-    for i in 1..n_vertices {
+    for i in 1..=n_vertices {
         modified_graph.push(Edge {
             tail: n_vertices + 1,
             head: i,
@@ -125,11 +128,11 @@ pub fn johnson(graph: &Vec<Edge>, n_vertices: usize) -> Option<Vec<Vec<Option<i3
     let mut correctors = vec![0; n_vertices + 1];
     match bellman_ford(&modified_graph, n_vertices + 1, n_vertices + 1) {
         None => {
-            println!("Negative cycle detected!");
+            // println!("Negative cycle detected!");
             return None;
         }
         Some(paths) => {
-            for i in 1..n_vertices {
+            for i in 1..=n_vertices {
                 if let Some(path) = paths[i] {
                     correctors[i] = path;
                 } else {
@@ -147,6 +150,7 @@ pub fn johnson(graph: &Vec<Edge>, n_vertices: usize) -> Option<Vec<Vec<Option<i3
             weight: edge.weight + correctors[edge.tail] - correctors[edge.head],
         });
     }
+
     for edge in &corrected_graph {
         if edge.weight < 0 {
             println!("Error in Bellman-Ford");

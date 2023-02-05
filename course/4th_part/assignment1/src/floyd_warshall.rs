@@ -1,7 +1,7 @@
 use crate::johnson::Edge;
 use std::io::{stdout, Write};
 
-const MAX_N_VERTICES: usize = 2049;
+const MAX_N_VERTICES: usize = 2049 * 10;
 
 pub fn floyd_warshall(graph: &Vec<Edge>, n_vertices: usize) -> Option<Vec<Vec<Option<i32>>>> {
     let mut paths1: [[Option<i32>; MAX_N_VERTICES]; MAX_N_VERTICES] =
