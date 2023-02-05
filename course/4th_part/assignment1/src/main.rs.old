@@ -1,0 +1,445 @@
+use std::cmp::{Ordering, Reverse};
+use std::fs::File;
+use std::io::{self, stdout, BufRead, Write};
+use std::sync::{Arc, Mutex};
+use std::thread;
+use std::time::Instant;
+
+const STACK_SIZE: usize = 1024 * 1024 * 1024;
+
+// #[derive(Clone)]
+// struct Edge {
+//     tail: usize,
+//     head: usize,
+//     weight: i64,
+// }
+
+// impl PartialOrd for Edge {
+//     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+//         self.weight.partial_cmp(&other.weight)
+//     }
+// }
+
+// impl Ord for Edge {
+//     fn cmp(&self, other: &Self) -> Ordering {
+//         self.weight.cmp(&other.weight)
+//     }
+// }
+
+// impl PartialEq for Edge {
+//     fn eq(&self, other: &Self) -> bool {
+//         self.weight.eq(&other.weight)
+//     }
+// }
+
+// impl Eq for Edge {}
+
+#[derive(Clone)]
+struct Graph {
+    n_vertices: usize,
+    weights: Vec<Vec<Option<i128>>>,
+}
+
+impl Graph {
+    fn new(n_vertices: usize) -> Self {
+        let mut weights = Vec::with_capacity(n_vertices);
+        for _ in 0..=n_vertices {
+            weights.push(Vec::new());
+            for _ in 0..=n_vertices {
+                weights.last_mut().unwrap().push(None);
+            }
+        }
+        Graph {
+            n_vertices,
+            weights,
+        }
+    }
+}
+
+fn floyd_warshall(graph: &Graph) -> [[Option<i128>; 1001]; 1001] {
+    println!("Running Floyd-Warshall...");
+    // let mut prev_paths = vec![vec![None; graph.n_vertices + 1]; graph.n_vertices + 1];
+    // let mut new_paths = vec![vec![None; graph.n_vertices + 1]; graph.n_vertices + 1];
+    let mut prev_paths: [[Option<i128>; 1001]; 1001] = [[None; 1001]; 1001];
+    let mut new_paths = [[None; 1001]; 1001];
+
+    for k in 0..=graph.n_vertices {
+        print!("\rk: {k}");
+        stdout().flush().unwrap();
+        for i in 1..=graph.n_vertices {
+            for j in 1..=graph.n_vertices {
+                if k == 0 {
+                    if i == j {
+                        new_paths[i][j] = Some(0i128);
+                    }
+                    continue;
+                }
+
+                let through_k = match (prev_paths[i][k], prev_paths[k][j]) {
+                    (Some(path1), Some(path2)) => Some(path1 + path2),
+                    _ => None,
+                };
+                new_paths[i][j] = match (prev_paths[i][j], through_k) {
+                    (Some(case1), Some(case2)) => Some(case1.min(case2)),
+                    (None, Some(case2)) => Some(case2),
+                    (Some(case1), None) => Some(case1),
+                    (None, None) => None,
+                }
+            }
+        }
+        prev_paths = new_paths;
+        // new_paths = vec![vec![None; graph.n_vertices + 1]; graph.n_vertices + 1];
+        new_paths = [[None; 1001]; 1001];
+    }
+    println!();
+    prev_paths
+}
+
+/*
+fn johnson(graph: &Vec<Edge>, n_vertices: usize) -> Option<Vec<Vec<Option<i64>>>> {
+    // Bellman-Ford
+    println!("Running Bellman-Ford...");
+
+    let mut bf_graph = graph.clone();
+    for i in 1..=n_vertices {
+        bf_graph.push(Edge {
+            tail: n_vertices + 1,
+            head: i,
+            weight: 0,
+        });
+    }
+
+    let mut bellman_ford_sol = vec![vec![None; n_vertices + 2]; n_vertices + 2];
+
+    // for fast lookup
+    let vecs_to_edge = {
+        let mut hm = HashMap::new();
+        for edge in &bf_graph {
+            hm.insert((edge.tail, edge.head), edge.weight);
+        }
+        hm
+    };
+    let head_to_tails = {
+        let mut hm = HashMap::new();
+        for i in 1..=n_vertices {
+            let mut tails = Vec::new();
+            for edge in &bf_graph {
+                if edge.head == i {
+                    tails.push(edge.tail);
+                }
+            }
+            hm.insert(i, tails);
+        }
+        hm
+    };
+
+    for i in 1..=(n_vertices + 1) {
+        print!("\ri: {i}");
+        stdout().flush().unwrap();
+        for j in 1..=n_vertices {
+            if i == 1 {
+                if let Some(weight) = vecs_to_edge.get(&(n_vertices + 1, j)) {
+                    bellman_ford_sol[i][j] = Some(*weight);
+                }
+                continue;
+            }
+
+            let case1 = bellman_ford_sol[i - 1][j];
+
+            let tails = head_to_tails.get(&j).unwrap();
+            let mut candidates_case2 = Vec::new();
+            for tail in tails {
+                if let Some(path_to_tail) = bellman_ford_sol[i - 1][*tail] {
+                    candidates_case2.push(path_to_tail + vecs_to_edge.get(&(*tail, j)).unwrap());
+                }
+            }
+            let case2 = candidates_case2.into_iter().min();
+
+            bellman_ford_sol[i][j] = match (case1, case2) {
+                (Some(case1), Some(case2)) => Some(case1.min(case2)),
+                (Some(case1), None) => Some(case1),
+                (None, Some(case2)) => Some(case2),
+                (None, None) => None,
+            }
+        }
+    }
+
+    // Check for negative cycles
+    for i in 1..=n_vertices {
+        if bellman_ford_sol[n_vertices + 1][i].unwrap() < bellman_ford_sol[n_vertices][i].unwrap() {
+            return None;
+        }
+    }
+
+    let correctors = {
+        let mut v = vec![0; n_vertices + 1];
+        for i in 1..=n_vertices {
+            v[i] = bellman_ford_sol[n_vertices][i].unwrap();
+        }
+        v
+    };
+
+    let corrected_graph = {
+        let mut v = Vec::new();
+        for edge in graph {
+            v.push(Edge {
+                tail: edge.tail,
+                head: edge.head,
+                weight: edge.weight + correctors[edge.tail] - correctors[edge.head],
+            });
+        }
+        v
+    };
+
+    corrected_graph.iter().for_each(|edge| {
+        if edge.weight < 0 {
+            panic!("Error, negative edge weight after Bellman-Ford")
+        }
+    });
+
+    // Dijkstra's algo
+    println!("\n\nRunning Dijkstra's algorithm...");
+
+    let outgoing_edges = {
+        let mut hm = HashMap::new();
+        for i in 1..=n_vertices {
+            let mut edges = Vec::new();
+            for edge in &corrected_graph {
+                if edge.tail == i {
+                    edges.push(edge);
+                }
+            }
+            hm.insert(i, edges);
+        }
+        hm
+    };
+
+    let mut shortest_paths = vec![vec![None; n_vertices + 1]; n_vertices + 1];
+
+    for source in 1..=n_vertices {
+        print!("\rn: {source}");
+        stdout().flush().unwrap();
+        shortest_paths[source][source] = Some(0i64);
+        let mut edges_heap = BinaryHeap::new();
+        for outgoing_edge in outgoing_edges.get(&source).unwrap().to_owned() {
+            edges_heap.push(Reverse(outgoing_edge));
+        }
+
+        while let Some(Reverse(shortest_edge)) = edges_heap.pop() {
+            shortest_paths[source][shortest_edge.head] =
+                Some(shortest_paths[source][shortest_edge.tail].unwrap() + shortest_edge.weight);
+
+            for outgoing_edge in outgoing_edges.get(&shortest_edge.head).unwrap().to_owned() {
+                if let None = shortest_paths[source][outgoing_edge.head] {
+                    edges_heap.push(Reverse(outgoing_edge))
+                }
+            }
+        }
+    }
+    println!();
+    println!();
+
+    for i in 1..=n_vertices {
+        for j in 1..=n_vertices {
+            if let Some(path) = shortest_paths[i][j] {
+                shortest_paths[i][j] = Some(path + correctors[j] - correctors[i]);
+            }
+        }
+    }
+
+    Some(shortest_paths)
+}
+*/
+
+fn main() {
+    let (input1, input2, input3) = (
+        File::open("g1.txt").unwrap(),
+        File::open("g2.txt").unwrap(),
+        File::open("g3.txt").unwrap(),
+    );
+    let (mut input1, mut input2, mut input3) = (
+        io::BufReader::new(input1).lines(),
+        io::BufReader::new(input2).lines(),
+        io::BufReader::new(input3).lines(),
+    );
+
+    let n_vertices = [
+        input1
+            .next()
+            .unwrap()
+            .unwrap()
+            .split_whitespace()
+            .next()
+            .unwrap()
+            .parse::<usize>()
+            .unwrap(),
+        input2
+            .next()
+            .unwrap()
+            .unwrap()
+            .split_whitespace()
+            .next()
+            .unwrap()
+            .parse::<usize>()
+            .unwrap(),
+        input3
+            .next()
+            .unwrap()
+            .unwrap()
+            .split_whitespace()
+            .next()
+            .unwrap()
+            .parse::<usize>()
+            .unwrap(),
+    ];
+
+    let mut graphs_matr = [
+        Graph::new(n_vertices[0]),
+        Graph::new(n_vertices[1]),
+        Graph::new(n_vertices[2]),
+    ];
+
+    while let Some(Ok(line)) = input1.next() {
+        let mut line = line.split_whitespace();
+        let (tail, head, weight): (usize, usize, i128) = (
+            line.next().unwrap().parse().unwrap(),
+            line.next().unwrap().parse().unwrap(),
+            line.next().unwrap().parse().unwrap(),
+        );
+        graphs_matr[0].weights[tail][head] = Some(weight);
+    }
+
+    while let Some(Ok(line)) = input2.next() {
+        let mut line = line.split_whitespace();
+        let (tail, head, weight): (usize, usize, i128) = (
+            line.next().unwrap().parse().unwrap(),
+            line.next().unwrap().parse().unwrap(),
+            line.next().unwrap().parse().unwrap(),
+        );
+        graphs_matr[1].weights[tail][head] = Some(weight);
+    }
+
+    while let Some(Ok(line)) = input3.next() {
+        let mut line = line.split_whitespace();
+        let (tail, head, weight): (usize, usize, i128) = (
+            line.next().unwrap().parse().unwrap(),
+            line.next().unwrap().parse().unwrap(),
+            line.next().unwrap().parse().unwrap(),
+        );
+        graphs_matr[2].weights[tail][head] = Some(weight);
+    }
+
+    let shortest_paths = Arc::new(Mutex::new(Vec::new()));
+    let shortest_paths_clone = shortest_paths.clone();
+    let new_thread = thread::Builder::new()
+        .stack_size(STACK_SIZE)
+        .spawn(move || {
+            let mut paths = shortest_paths_clone.lock().unwrap();
+            for (i, graph) in graphs_matr.iter_mut().enumerate() {
+                println!("Processing graph {}", i + 1);
+                paths.push(floyd_warshall(graph));
+            }
+        })
+        .unwrap();
+    new_thread.join().unwrap();
+
+    let shortest_paths = shortest_paths.lock().unwrap();
+
+    let mut neg_cycles = [false, false, false];
+
+    for i in 0..3 {
+        for j in 1..=n_vertices[i] {
+            if let None = shortest_paths[i][j][j] {
+                println!("Graph {} has a negative cycle!", i + 1);
+                neg_cycles[i] = true;
+                break;
+            } else if shortest_paths[i][j][j].unwrap() < 0 {
+                println!("Graph {} has a negative cycle!", i + 1);
+                neg_cycles[i] = true;
+                break;
+            }
+        }
+    }
+
+    let mut paths = Vec::new();
+    for i in 0..3 {
+        if neg_cycles[i] {
+            continue;
+        }
+        for j in 1..=n_vertices[i] {
+            for k in 1..=n_vertices[i] {
+                if let Some(path) = shortest_paths[i][j][k] {
+                    paths.push(path);
+                }
+            }
+        }
+    }
+
+    println!("Overall shortest path is: {}", paths.iter().min().unwrap());
+}
+
+/*
+fn test1() {
+    let input = File::open("test4.txt").unwrap();
+    let mut input = io::BufReader::new(input).lines();
+    let n_vertices = input
+        .next()
+        .unwrap()
+        .unwrap()
+        .split_whitespace()
+        .next()
+        .unwrap()
+        .parse::<usize>()
+        .unwrap();
+    let mut graph_matr = Graph::new(n_vertices);
+    let mut graph_list = Vec::new();
+
+    while let Some(Ok(line)) = input.next() {
+        let mut line = line.split_whitespace();
+        let (tail, head, weight) = (
+            line.next().unwrap().parse::<usize>().unwrap(),
+            line.next().unwrap().parse::<usize>().unwrap(),
+            line.next().unwrap().parse::<i64>().unwrap(),
+        );
+        graph_matr.weights[tail][head] = Some(weight);
+        graph_list.push(Edge { tail, head, weight });
+    }
+
+    let start = Instant::now();
+    floyd_warshall(&mut graph_matr);
+    println!("Floyd-Warshall took {:?}", start.elapsed());
+    let mut fw_paths = Vec::new();
+    for i in 1..=n_vertices {
+        for j in 1..=n_vertices {
+            if let Some(path) = graph_matr.weights[i][j] {
+                fw_paths.push(path);
+            }
+        }
+    }
+
+    let start = Instant::now();
+    let j_paths = johnson(&graph_list, n_vertices);
+    println!("Johnson took {:?}", start.elapsed());
+    match j_paths {
+        None => {
+            println!("Negative cost cycle detected!");
+            return;
+        }
+        Some(paths) => {
+            let mut paths_list = Vec::new();
+            for i in 1..=n_vertices {
+                for j in 1..=n_vertices {
+                    if let Some(path) = paths[i][j] {
+                        paths_list.push(path);
+                    }
+                }
+            }
+            let min = paths_list.iter().min().unwrap();
+            println!("Johnson min path is {min}");
+        }
+    }
+
+    let shortest = fw_paths.iter().min().unwrap();
+    println!("Floyd-Warshall min path is {shortest}");
+}
+*/
