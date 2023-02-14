@@ -182,6 +182,7 @@ pub fn johnson(graph: &Vec<Edge>, n_vertices: usize) -> Option<Vec<Vec<Option<i3
             .for_each(|e| crossing_edges.push(Reverse(e)));
 
         let mut shortest_paths = vec![None; n_vertices + 1];
+        shortest_paths[source] = Some(0);
 
         while let Some(Reverse(shortest_edge)) = crossing_edges.pop() {
             if shortest_paths[shortest_edge.head].is_some() {
