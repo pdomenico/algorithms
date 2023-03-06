@@ -83,7 +83,6 @@ fn city_set_to_key(cities: &Vec<usize>) -> usize {
 }
 
 fn tsp(cities: &mut Vec<City>, start: usize) -> f64 {
-    // let cities_array: [City; MAX_CITY_N] = cities.clone():try_into().unwrap();
     let mut cities_clone = cities.clone();
     let mut cities_without_start = [0usize; MAX_CITY_N];
     let mut i = 0;
@@ -108,14 +107,6 @@ fn tsp(cities: &mut Vec<City>, start: usize) -> f64 {
                 let key = city_set_to_key(&set);
                 if set.len() == 1 {
                     let distance = cities[start].distance_from(&cities_clone[*dest]);
-                    // match solutions.get_mut(key) {
-                    //     Some(arr) => arr[*dest] = distance,
-                    //     None => {
-                    //         let mut new_arr = [f64::INFINITY; MAX_CITY_N];
-                    //         new_arr[*dest] = distance;
-                    //         solutions.insert(key, new_arr);
-                    //     }
-                    // }
                     solutions[key][*dest] = distance;
                     continue;
                 }
@@ -134,28 +125,13 @@ fn tsp(cities: &mut Vec<City>, start: usize) -> f64 {
                     })
                     .fold(f64::INFINITY, f64::min);
 
-                // match solutions.get_mut(key) {
-                //     Some(arr) => arr[*dest] = shortest,
-                //     None => {
-                //         let mut new_arr = [f64::INFINITY; MAX_CITY_N];
-                //         new_arr[*dest] = shortest;
-                //         solutions.insert(key, new_arr);
-                //     }
-                // }
                 solutions[key][*dest] = shortest;
             }
         }
     }
-    println!("Finished");
 
     let final_solutions =
         solutions[city_set_to_key(&cities_without_start[0..(cities.len() - 1)].to_vec())];
-    for (i, sol) in final_solutions.iter().enumerate() {
-        println!(
-            "Final sol: {}",
-            sol + cities[start].distance_from(&cities_clone[i - 1])
-        );
-    }
     let mut shortest = f64::INFINITY;
     for dest in cities_without_start[0..(cities.len() - 1)].iter() {
         let length = final_solutions[*dest] + cities[start].distance_from(&cities_clone[*dest]);
@@ -167,7 +143,7 @@ fn tsp(cities: &mut Vec<City>, start: usize) -> f64 {
 }
 
 fn main() {
-    let mut cities = read_input("input.txt");
+    let mut cities = read_input("test1.txt");
 
     println!("Final solution: {}", tsp(&mut cities, 0));
 }
